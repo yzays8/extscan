@@ -1,3 +1,5 @@
+use extscan::{parse::get_args, run};
+
 fn main() {
-    println!("Hello, world!");
+    run(get_args());
 }
