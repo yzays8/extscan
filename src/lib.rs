@@ -6,6 +6,10 @@ use parse::Args;
 use std::error::Error;
 
 pub fn run() -> Result<(), Box<dyn Error>> {
-    scan::print_summary(scan::scan(Args::parse_args())?);
+    let args = Args::parse_args();
+    let scan_summary = scan::scan(&args)?;
+    if !args.no_summary {
+        scan::print_summary(scan_summary);
+    }
     Ok(())
 }

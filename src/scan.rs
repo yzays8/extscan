@@ -14,7 +14,7 @@ pub struct SummaryInfo {
     dir_num: usize,
 }
 
-pub fn scan(args: Args) -> Result<SummaryInfo, Box<dyn Error>> {
+pub fn scan(args: &Args) -> Result<SummaryInfo, Box<dyn Error>> {
     // <filename, expected_ext>
     let mut mismatched_files: HashMap<String, String> = HashMap::new();
 
@@ -39,7 +39,7 @@ pub fn scan(args: Args) -> Result<SummaryInfo, Box<dyn Error>> {
                 let files = fs::read_dir(&filename)?
                     .map(|res| res.map(|e| e.path().to_str().unwrap().to_string()))
                     .collect::<Result<Vec<String>, std::io::Error>>()?;
-                let summ_info = scan(Args {
+                let summ_info = scan(&Args {
                     files,
                     magic_file: args.magic_file.clone(),
                     recursive: args.recursive,
@@ -140,7 +140,7 @@ mod tests {
             yes: false,
             no: false,
         };
-        let summ_info = scan(args).unwrap();
+        let summ_info = scan(&args).unwrap();
         assert_eq!(summ_info.total_num, 5);
         assert_eq!(summ_info.empty_num, 1);
         assert_eq!(summ_info.unknown_num, 1);
@@ -163,7 +163,7 @@ mod tests {
             yes: false,
             no: false,
         };
-        let summ_info = scan(args).unwrap();
+        let summ_info = scan(&args).unwrap();
         assert_eq!(summ_info.total_num, 11);
         assert_eq!(summ_info.empty_num, 2);
         assert_eq!(summ_info.unknown_num, 2);
