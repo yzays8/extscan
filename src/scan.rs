@@ -101,7 +101,17 @@ pub fn scan(args: &Args) -> Result<SummaryInfo, Box<dyn Error>> {
     })
 }
 
-pub fn print_summary(info: SummaryInfo) {
+pub fn fix_exts(info: &SummaryInfo) -> Result<(), Box<dyn Error>> {
+    for (filename, expected_ext) in &info.mismatched_files {
+        let path = Path::new(&filename);
+        let new_filename = path.with_extension(expected_ext);
+        fs::rename(path, &new_filename)?;
+        println!("Renamed {} to {}", filename, new_filename.to_str().unwrap());
+    }
+    Ok(())
+}
+
+pub fn print_summary(info: &SummaryInfo) {
     println!("\n================ Scan Results ================");
     println!("Total files: {}", info.total_num);
     println!("Empty files: {}", info.empty_num);
@@ -115,7 +125,7 @@ pub fn print_summary(info: SummaryInfo) {
         "\nFiles with mismatched extensions: {} files",
         info.mismatched_files.len()
     );
-    for (filename, expected_ext) in info.mismatched_files {
+    for (filename, expected_ext) in &info.mismatched_files {
         println!("  {} (expected: {})", filename, expected_ext);
     }
     println!("==============================================");
