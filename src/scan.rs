@@ -35,6 +35,24 @@ pub fn scan(args: Args) -> Result<SummaryInfo, Box<dyn Error>> {
         if path.is_dir() {
             println!("[directory] {}", &filename);
             dir_num += 1;
+            if args.recursive {
+                let files = fs::read_dir(&filename)?
+                    .map(|res| res.map(|e| e.path().to_str().unwrap().to_string()))
+                    .collect::<Result<Vec<String>, std::io::Error>>()?;
+                let summ_info = scan(Args {
+                    files,
+                    magic_file: args.magic_file.clone(),
+                    recursive: args.recursive,
+                    no_summary: args.no_summary,
+                    yes: args.yes,
+                    no: args.no,
+                })?;
+                mismatched_files.extend(summ_info.mismatched_files);
+                total_num += summ_info.total_num;
+                empty_num += summ_info.empty_num;
+                unknown_num += summ_info.unknown_num;
+                dir_num += summ_info.dir_num;
+            }
             continue;
         }
 
@@ -101,4 +119,55 @@ pub fn print_summary(info: SummaryInfo) {
         println!("  {} (expected: {})", filename, expected_ext);
     }
     println!("==============================================");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scan() {
+        let files = fs::read_dir("tests/data/")
+            .unwrap()
+            .map(|res| res.map(|e| e.path().to_str().unwrap().to_string()))
+            .collect::<Result<Vec<String>, std::io::Error>>()
+            .unwrap();
+        let args = Args {
+            files,
+            magic_file: None,
+            recursive: false,
+            no_summary: false,
+            yes: false,
+            no: false,
+        };
+        let summ_info = scan(args).unwrap();
+        assert_eq!(summ_info.total_num, 5);
+        assert_eq!(summ_info.empty_num, 1);
+        assert_eq!(summ_info.unknown_num, 1);
+        assert_eq!(summ_info.dir_num, 1);
+        assert_eq!(summ_info.mismatched_files.len(), 2);
+    }
+
+    #[test]
+    fn test_scan_rec() {
+        let files = fs::read_dir("tests/data/")
+            .unwrap()
+            .map(|res| res.map(|e| e.path().to_str().unwrap().to_string()))
+            .collect::<Result<Vec<String>, std::io::Error>>()
+            .unwrap();
+        let args = Args {
+            files,
+            magic_file: None,
+            recursive: true,
+            no_summary: false,
+            yes: false,
+            no: false,
+        };
+        let summ_info = scan(args).unwrap();
+        assert_eq!(summ_info.total_num, 11);
+        assert_eq!(summ_info.empty_num, 2);
+        assert_eq!(summ_info.unknown_num, 2);
+        assert_eq!(summ_info.dir_num, 2);
+        assert_eq!(summ_info.mismatched_files.len(), 4);
+    }
 }
