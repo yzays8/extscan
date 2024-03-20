@@ -1,10 +1,10 @@
-pub mod parse;
+mod magic;
+mod parse;
+mod scan;
 
-use parse::Args;
+use std::error::Error;
 
-pub fn run(args: Args) {
-    println!("Args: {:#?}", args);
-    for file in args.files {
-        println!("Scanning {}", file);
-    }
+pub fn run() -> Result<(), Box<dyn Error>> {
+    scan::print_summary(scan::scan(parse::get_args())?);
+    Ok(())
 }

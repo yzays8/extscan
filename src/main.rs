@@ -1,5 +1,8 @@
-use extscan::{parse::get_args, run};
+use extscan::run;
 
 fn main() {
-    run(get_args());
+    if let Err(e) = run() {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
 }
