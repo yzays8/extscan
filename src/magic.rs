@@ -1,8 +1,5 @@
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
 
-const MAGIC_NONE: c_int = 0x000000; // No flags
-const MAGIC_DEBUG: c_int = 0x000001; // Turn on debugging
-const MAGIC_MIME: c_int = 0x000010; // Return a mime string
 const MAGIC_EXTENSION: c_int = 0x1000000; // Returns a separated list of extensions
 
 // https://manpages.debian.org/bookworm/libmagic-dev/libmagic.3.en.html
