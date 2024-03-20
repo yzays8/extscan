@@ -25,6 +25,8 @@ pub struct Args {
     pub no: bool,
 }
 
-pub fn get_args() -> Args {
-    Args::parse()
+impl Args {
+    pub fn parse_args() -> Self {
+        Self::parse()
+    }
 }
