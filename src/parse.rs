@@ -9,9 +9,6 @@ pub struct Args {
     #[arg(long, help = "Use the specified magic file for file type detection")]
     pub magic_file: Option<String>,
 
-    #[arg(short, long, help = "Treat file extensions as case-sensitive")]
-    pub strict: bool,
-
     #[arg(short, long, help = "Check files and directories recursively")]
     pub recursive: bool,
 

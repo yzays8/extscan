@@ -54,7 +54,7 @@ pub fn scan(args: Args) -> Result<SummaryInfo, Box<dyn Error>> {
 
         match path.extension() {
             Some(actual_ext) => {
-                if !expected_exts.contains(&actual_ext.to_str().unwrap()) {
+                if !expected_exts.contains(&actual_ext.to_str().unwrap().to_lowercase().as_str()) {
                     println!(
                         "[mismatch]  {} (expected: {} actual: {})",
                         &filename,
