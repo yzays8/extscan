@@ -1,3 +1,4 @@
+use anyhow::{bail, Result};
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
 
 const MAGIC_EXTENSION: c_int = 0x1000000; // Returns a separated list of extensions
@@ -23,18 +24,18 @@ extern "C" {
     fn magic_error(cookie: *mut c_void) -> *const c_char;
 }
 
-pub fn get_exts(filename: &str) -> Result<String, Box<dyn std::error::Error>> {
+pub fn get_exts(filename: &str) -> Result<String> {
     let flags = MAGIC_EXTENSION;
     let cookie = unsafe { magic_open(flags) };
     if cookie.is_null() {
         let error = unsafe { magic_error(cookie) };
-        return Err(format!("magic_open failed: {:?}", unsafe { CStr::from_ptr(error) }).into());
+        bail!("magic_open failed: {:?}", unsafe { CStr::from_ptr(error) });
     }
 
     let result = unsafe { magic_load(cookie, std::ptr::null()) };
     if result != 0 {
         let error = unsafe { magic_error(cookie) };
-        return Err(format!("magic_load failed: {:?}", unsafe { CStr::from_ptr(error) }).into());
+        bail!("magic_load failed: {:?}", unsafe { CStr::from_ptr(error) });
     }
 
     let file_name = CString::new(filename)?;
@@ -42,7 +43,7 @@ pub fn get_exts(filename: &str) -> Result<String, Box<dyn std::error::Error>> {
     let result = unsafe { magic_file(cookie, file_name.as_ptr()) };
     if result.is_null() {
         let error = unsafe { magic_error(cookie) };
-        return Err(format!("magic_file failed: {:?}", unsafe { CStr::from_ptr(error) }).into());
+        bail!("magic_file failed: {:?}", unsafe { CStr::from_ptr(error) });
     }
 
     let result_str = unsafe { CStr::from_ptr(result).to_str()? }.to_string();

@@ -1,7 +1,7 @@
-use crate::magic::get_exts;
 use crate::cli::Args;
+use crate::magic::get_exts;
+use anyhow::{bail, Result};
 use std::collections::HashMap;
-use std::error::Error;
 use std::fs;
 use std::path::Path;
 
@@ -14,7 +14,7 @@ pub struct SummaryInfo {
     dir_num: usize,
 }
 
-pub fn scan(args: &Args) -> Result<SummaryInfo, Box<dyn Error>> {
+pub fn scan(args: &Args) -> Result<SummaryInfo> {
     // <filename, expected_ext>
     let mut mismatched_files: HashMap<String, String> = HashMap::new();
 
@@ -27,7 +27,7 @@ pub fn scan(args: &Args) -> Result<SummaryInfo, Box<dyn Error>> {
         let filename = fs::canonicalize(filename)?.to_str().unwrap().to_string();
         let path = Path::new(&filename);
         if !path.exists() {
-            return Err(format!("{} does not exist", &filename).into());
+            bail!("{} does not exist", &filename);
         }
 
         total_num += 1;
@@ -101,7 +101,7 @@ pub fn scan(args: &Args) -> Result<SummaryInfo, Box<dyn Error>> {
     })
 }
 
-pub fn fix_exts(info: &SummaryInfo) -> Result<(), Box<dyn Error>> {
+pub fn fix_exts(info: &SummaryInfo) -> Result<()> {
     for (filename, expected_ext) in &info.mismatched_files {
         let path = Path::new(&filename);
         let new_filename = path.with_extension(expected_ext);
