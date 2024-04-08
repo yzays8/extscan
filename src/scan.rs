@@ -1,5 +1,5 @@
 use crate::magic::get_exts;
-use crate::parse::Args;
+use crate::cli::Args;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;

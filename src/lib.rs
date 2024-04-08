@@ -1,8 +1,8 @@
 mod magic;
-mod parse;
+mod cli;
 mod scan;
 
-use parse::Args;
+use cli::Args;
 use std::error::Error;
 
 pub fn run() -> Result<(), Box<dyn Error>> {
