@@ -1,19 +1,24 @@
 use std::{collections::HashMap, fs, path::Path};
 
-use crate::{app::Config, error::Result, magic::get_exts};
+use crate::{
+    app::Config,
+    detector::{self, FileTypeDetector},
+    error::Result,
+};
 
 #[derive(Debug)]
 pub struct SummaryInfo {
-    mismatched_files: HashMap<String, String>,
-    total_num: usize,
-    empty_num: usize,
-    unknown_num: usize,
-    dir_num: usize,
+    pub mismatched_files: HashMap<String, String>,
+    pub total_num: usize,
+    pub empty_num: usize,
+    pub unknown_num: usize,
+    pub dir_num: usize,
 }
 
 pub fn scan(config: &Config) -> Result<SummaryInfo> {
     // <filename, expected_ext>
     let mut mismatched_files: HashMap<String, String> = HashMap::new();
+    let detector = detector::get_detector()?;
 
     let mut total_num = 0;
     let mut empty_num = 0;
@@ -57,7 +62,7 @@ pub fn scan(config: &Config) -> Result<SummaryInfo> {
             continue;
         }
 
-        let e = get_exts(&filename)?;
+        let e = detector.detect(&filename)?;
         let expected_exts = e.split('/').collect::<Vec<&str>>();
         if expected_exts[0] == "???" {
             println!("[unknown]   {}", &filename);
@@ -96,8 +101,8 @@ pub fn scan(config: &Config) -> Result<SummaryInfo> {
     })
 }
 
-pub fn fix_exts(info: &SummaryInfo) -> Result<()> {
-    for (filename, expected_ext) in &info.mismatched_files {
+pub fn fix_extensions(mismatched_files: &HashMap<String, String>) -> Result<()> {
+    for (filename, expected_ext) in mismatched_files {
         let path = Path::new(&filename);
         let new_filename = path.with_extension(expected_ext);
         fs::rename(path, &new_filename)?;
@@ -117,7 +122,7 @@ pub fn print_summary(info: &SummaryInfo) {
         info.total_num - info.empty_num - info.unknown_num - info.dir_num
     );
     println!(
-        "\nFiles with mismatched extensions: {} files",
+        "\nFiles with mismatched extensions: {}",
         info.mismatched_files.len()
     );
     for (filename, expected_ext) in &info.mismatched_files {

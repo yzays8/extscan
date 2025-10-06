@@ -29,7 +29,7 @@ impl App {
 
         loop {
             if self.config.yes {
-                scanner::fix_exts(&scan_summary)?;
+                scanner::fix_extensions(&scan_summary.mismatched_files)?;
                 break;
             }
             if self.config.no {
@@ -41,7 +41,7 @@ impl App {
             std::io::stdin().read_line(&mut input)?;
             match input.trim().to_lowercase().as_str() {
                 "y" | "yes" => {
-                    scanner::fix_exts(&scan_summary)?;
+                    scanner::fix_extensions(&scan_summary.mismatched_files)?;
                     break;
                 }
                 "n" | "no" => break,
