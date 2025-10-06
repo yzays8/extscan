@@ -1,6 +1,8 @@
-mod cli;
-mod magic;
-mod run;
-mod scan;
+#![deny(unsafe_code)]
 
-pub use run::run;
+mod app;
+mod error;
+mod magic;
+mod scanner;
+
+pub use app::{App, Config};

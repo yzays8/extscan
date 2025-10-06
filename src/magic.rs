@@ -1,11 +1,15 @@
-use anyhow::{bail, Result};
-use std::ffi::{c_char, c_int, c_void, CStr, CString};
+#![allow(unsafe_code)]
 
-const MAGIC_EXTENSION: c_int = 0x1000000; // Returns a separated list of extensions
+use std::ffi::{CStr, CString, c_char, c_int, c_void};
+
+use crate::error::{Error, Result};
+
+/// Returns a separated list of extensions
+const MAGIC_EXTENSION_FLAGS: c_int = 0x1000000;
 
 // https://manpages.debian.org/bookworm/libmagic-dev/libmagic.3.en.html
 #[link(name = "magic")]
-extern "C" {
+unsafe extern "C" {
     // magic_t is an opaque type.
 
     // magic_t magic_open(int flags)
@@ -25,17 +29,20 @@ extern "C" {
 }
 
 pub fn get_exts(filename: &str) -> Result<String> {
-    let flags = MAGIC_EXTENSION;
-    let cookie = unsafe { magic_open(flags) };
+    let cookie = unsafe { magic_open(MAGIC_EXTENSION_FLAGS) };
     if cookie.is_null() {
         let error = unsafe { magic_error(cookie) };
-        bail!("magic_open failed: {:?}", unsafe { CStr::from_ptr(error) });
+        return Err(Error::Other(format!("magic_open failed: {:?}", unsafe {
+            CStr::from_ptr(error)
+        })));
     }
 
     let result = unsafe { magic_load(cookie, std::ptr::null()) };
     if result != 0 {
         let error = unsafe { magic_error(cookie) };
-        bail!("magic_load failed: {:?}", unsafe { CStr::from_ptr(error) });
+        return Err(Error::Other(format!("magic_load failed: {:?}", unsafe {
+            CStr::from_ptr(error)
+        })));
     }
 
     let file_name = CString::new(filename)?;
@@ -43,7 +50,9 @@ pub fn get_exts(filename: &str) -> Result<String> {
     let result = unsafe { magic_file(cookie, file_name.as_ptr()) };
     if result.is_null() {
         let error = unsafe { magic_error(cookie) };
-        bail!("magic_file failed: {:?}", unsafe { CStr::from_ptr(error) });
+        return Err(Error::Other(format!("magic_file failed: {:?}", unsafe {
+            CStr::from_ptr(error)
+        })));
     }
 
     let result_str = unsafe { CStr::from_ptr(result).to_str()? }.to_string();

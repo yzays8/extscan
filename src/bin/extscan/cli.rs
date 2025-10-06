@@ -21,9 +21,3 @@ pub struct Args {
     #[arg(short, long, help = "No to all")]
     pub no: bool,
 }
-
-impl Args {
-    pub fn parse_args() -> Self {
-        Self::parse()
-    }
-}

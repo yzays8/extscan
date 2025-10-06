@@ -1,9 +1,6 @@
-use crate::cli::Args;
-use crate::magic::get_exts;
-use anyhow::{bail, Result};
-use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
+use std::{collections::HashMap, fs, path::Path};
+
+use crate::{app::Config, error::Result, magic::get_exts};
 
 #[derive(Debug)]
 pub struct SummaryInfo {
@@ -14,7 +11,7 @@ pub struct SummaryInfo {
     dir_num: usize,
 }
 
-pub fn scan(args: &Args) -> Result<SummaryInfo> {
+pub fn scan(config: &Config) -> Result<SummaryInfo> {
     // <filename, expected_ext>
     let mut mismatched_files: HashMap<String, String> = HashMap::new();
 
@@ -23,29 +20,27 @@ pub fn scan(args: &Args) -> Result<SummaryInfo> {
     let mut unknown_num = 0;
     let mut dir_num = 0;
 
-    for filename in &args.files {
+    for filename in &config.files {
         let filename = fs::canonicalize(filename)?.to_str().unwrap().to_string();
         let path = Path::new(&filename);
-        if !path.exists() {
-            bail!("{} does not exist", &filename);
-        }
+        path.try_exists()?;
 
         total_num += 1;
 
         if path.is_dir() {
             println!("[directory] {}", &filename);
             dir_num += 1;
-            if args.recursive {
+            if config.recursive {
                 let files = fs::read_dir(&filename)?
                     .map(|res| res.map(|e| e.path().to_str().unwrap().to_string()))
-                    .collect::<Result<Vec<String>, std::io::Error>>()?;
-                let summ_info = scan(&Args {
+                    .collect::<std::result::Result<Vec<String>, std::io::Error>>()?;
+                let summ_info = scan(&Config {
                     files,
-                    magic_file: args.magic_file.clone(),
-                    recursive: args.recursive,
-                    no_summary: args.no_summary,
-                    yes: args.yes,
-                    no: args.no,
+                    magic_file: config.magic_file.clone(),
+                    recursive: config.recursive,
+                    no_summary: config.no_summary,
+                    yes: config.yes,
+                    no: config.no,
                 })?;
                 mismatched_files.extend(summ_info.mismatched_files);
                 total_num += summ_info.total_num;
@@ -140,9 +135,9 @@ mod tests {
         let files = fs::read_dir("tests/data/")
             .unwrap()
             .map(|res| res.map(|e| e.path().to_str().unwrap().to_string()))
-            .collect::<Result<Vec<String>, std::io::Error>>()
+            .collect::<std::result::Result<Vec<String>, std::io::Error>>()
             .unwrap();
-        let args = Args {
+        let args = Config {
             files,
             magic_file: None,
             recursive: false,
@@ -163,9 +158,9 @@ mod tests {
         let files = fs::read_dir("tests/data/")
             .unwrap()
             .map(|res| res.map(|e| e.path().to_str().unwrap().to_string()))
-            .collect::<Result<Vec<String>, std::io::Error>>()
+            .collect::<std::result::Result<Vec<String>, std::io::Error>>()
             .unwrap();
-        let args = Args {
+        let args = Config {
             files,
             magic_file: None,
             recursive: true,
