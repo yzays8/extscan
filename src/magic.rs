@@ -1,6 +1,7 @@
 #![allow(unsafe_code)]
 
 use std::{
+    cell::RefCell,
     collections::HashMap,
     ffi::{CStr, CString, c_void},
     fs,
@@ -13,7 +14,7 @@ use rayon::prelude::*;
 
 use crate::{
     app::Config,
-    detector::{self, FileTypeDetector},
+    detector::FileTypeDetector,
     error::{Error, Result},
     ffi,
     scanner::{Scanner, SummaryInfo},
@@ -22,12 +23,12 @@ use crate::{
 /// This is not thread-safe.
 #[derive(Debug)]
 pub struct LibMagicDetector {
-    config: Config,
+    magic_file: Option<String>,
     cookie: *mut c_void,
 }
 
 impl LibMagicDetector {
-    pub fn build(config: Config) -> Result<Self> {
+    pub fn build(magic_file: Option<String>) -> Result<Self> {
         // If only MAGIC_EXTENSION is specified, some file formats will appear as “???”.
         // By specifying MAGIC_MIME_TYPE, they will fall back to the MIME format.
         let cookie = unsafe { ffi::magic_open(ffi::MAGIC_EXTENSION | ffi::MAGIC_MIME_TYPE) };
@@ -36,13 +37,13 @@ impl LibMagicDetector {
                 CStr::from_ptr(ffi::magic_error(cookie))
             })));
         }
-        Ok(LibMagicDetector { config, cookie })
+        Ok(LibMagicDetector { magic_file, cookie })
     }
 }
 
 impl FileTypeDetector for LibMagicDetector {
     fn detect(&self, file_path: &str) -> Result<String> {
-        let r = match &self.config.magic_file {
+        let r = match &self.magic_file {
             Some(magic_file) => {
                 let mgc = CString::new(magic_file.as_str())?;
                 unsafe { ffi::magic_load(self.cookie, mgc.as_ptr()) }
@@ -88,7 +89,11 @@ impl LibMagicScanner {
         LibMagicScanner { config }
     }
 
-    fn inspect_file(&self, file_path: &PathBuf) -> Result<(usize, HashMap<String, String>)> {
+    fn inspect_file(
+        &self,
+        detector: &LibMagicDetector,
+        file_path: &PathBuf,
+    ) -> Result<(usize, HashMap<String, String>)> {
         let file_name = file_path.to_str().unwrap().to_string();
 
         // Detect empty files.
@@ -96,8 +101,7 @@ impl LibMagicScanner {
             return Ok((1, HashMap::new()));
         }
 
-        // libmagic is not thread-safe, so it needs to be created per thread.
-        let expected_exts = detector::build_detector(&self.config)?.detect(&file_name)?;
+        let expected_exts = detector.detect(&file_name)?;
         let actual_ext = file_path
             .extension()
             .and_then(|e| e.to_str())
@@ -126,6 +130,10 @@ impl LibMagicScanner {
     }
 }
 
+thread_local! {
+    static DETECTOR: RefCell<Option<LibMagicDetector>> = const {RefCell::new(None)};
+}
+
 impl Scanner for LibMagicScanner {
     fn scan(&self) -> Result<SummaryInfo> {
         let paths = WalkBuilder::new(&self.config.file_path)
@@ -143,7 +151,17 @@ impl Scanner for LibMagicScanner {
 
         let (total_num, mismatched_files) = paths
             .par_iter()
-            .map(|path| self.inspect_file(path))
+            .map(|path| {
+                DETECTOR.with(|detector_rc| {
+                    let mut detector_opt = detector_rc.borrow_mut();
+                    // libmagic is not thread-safe, so create a separate instance of libmagic for each thread.
+                    if detector_opt.is_none() {
+                        *detector_opt =
+                            Some(LibMagicDetector::build(self.config.magic_file.clone()).unwrap());
+                    }
+                    self.inspect_file(detector_opt.as_ref().unwrap(), path)
+                })
+            })
             .try_reduce(
                 || (0, HashMap::new()),
                 |acc, res| -> Result<(usize, HashMap<String, String>)> {
