@@ -4,7 +4,7 @@ use clap::Parser;
 #[command(version, about, long_about = None)]
 pub struct Args {
     #[arg(help = "Input path")]
-    pub file: String,
+    pub file_path: String,
 
     #[arg(long, help = "Use the specified magic file for file type detection")]
     pub magic_file: Option<String>,

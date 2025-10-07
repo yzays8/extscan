@@ -25,7 +25,7 @@ impl App {
         let summary = scanner::build_scanner(&self.config)?.scan()?;
 
         if !self.config.no_summary {
-            summary.print_summary();
+            summary.print();
         }
 
         Ok(())

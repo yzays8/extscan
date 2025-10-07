@@ -1,27 +1,32 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use colored::Colorize;
 
 use crate::{app::Config, error::Result, magic::LibMagicScanner};
 
 #[derive(Debug)]
-pub struct SummaryInfo {
-    pub mismatched_files: HashMap<String, String>,
+pub struct ScanSummary {
+    /// <file path, expected extension>
+    pub mismatched_files: HashMap<PathBuf, String>,
     pub total_num: usize,
 }
 
-impl SummaryInfo {
-    pub fn print_summary(&self) {
+impl ScanSummary {
+    pub fn print(&self) {
         println!("\nTotal files: {}", self.total_num);
         println!("\nMismatched Files: {}", self.mismatched_files.len());
         for (file_name, expected_ext) in &self.mismatched_files {
-            println!("  {} (expected: {})", file_name, expected_ext.green());
+            println!(
+                "  {} (expected: {})",
+                file_name.display(),
+                expected_ext.green()
+            );
         }
     }
 }
 
 pub trait Scanner {
-    fn scan(&self) -> Result<SummaryInfo>;
+    fn scan(&self) -> Result<ScanSummary>;
 }
 
 pub fn build_scanner(config: &Config) -> Result<impl Scanner> {

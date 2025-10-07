@@ -5,7 +5,7 @@ use std::{
     collections::HashMap,
     ffi::{CStr, CString, c_void},
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use colored::Colorize;
@@ -17,7 +17,7 @@ use crate::{
     detector::FileTypeDetector,
     error::{Error, Result},
     ffi,
-    scanner::{Scanner, SummaryInfo},
+    scanner::{ScanSummary, Scanner},
 };
 
 /// This is not thread-safe.
@@ -42,7 +42,7 @@ impl LibMagicDetector {
 }
 
 impl FileTypeDetector for LibMagicDetector {
-    fn detect(&self, file_path: &str) -> Result<String> {
+    fn detect(&self, file_path: &Path) -> Result<String> {
         let r = match &self.magic_file {
             Some(magic_file) => {
                 let mgc = CString::new(magic_file.as_str())?;
@@ -56,7 +56,7 @@ impl FileTypeDetector for LibMagicDetector {
             })));
         }
 
-        let file_name = CString::new(file_path)?;
+        let file_name = CString::new(file_path.to_str().unwrap())?;
 
         let r = unsafe { ffi::magic_file(self.cookie, file_name.as_ptr()) };
         if r.is_null() {
@@ -93,15 +93,13 @@ impl LibMagicScanner {
         &self,
         detector: &LibMagicDetector,
         file_path: &PathBuf,
-    ) -> Result<(usize, HashMap<String, String>)> {
-        let file_name = file_path.to_str().unwrap().to_string();
-
+    ) -> Result<HashMap<PathBuf, String>> {
         // Detect empty files.
         if fs::metadata(file_path).map(|m| m.len()).unwrap_or(0) == 0 {
-            return Ok((1, HashMap::new()));
+            return Ok(HashMap::new());
         }
 
-        let expected_exts = detector.detect(&file_name)?;
+        let expected_exts_str = detector.detect(file_path)?;
         let actual_ext = file_path
             .extension()
             .and_then(|e| e.to_str())
@@ -109,24 +107,24 @@ impl LibMagicScanner {
             .to_lowercase();
 
         if actual_ext.is_empty() {
-            return Ok((1, HashMap::new()));
+            return Ok(HashMap::new());
         }
 
-        let is_mismatch = !expected_exts.split('/').any(|e| e == actual_ext);
+        let is_mismatch = !expected_exts_str.split('/').any(|e| e == actual_ext);
         if is_mismatch {
             println!(
                 "{}  {} (expected: {} actual: {})",
                 "[mismatch]".red(),
-                &file_name,
-                &expected_exts.green(),
+                &file_path.display(),
+                &expected_exts_str.green(),
                 &actual_ext.red(),
             );
             let mut mismatched_files = HashMap::new();
-            mismatched_files.insert(file_name.clone(), expected_exts);
-            return Ok((1, mismatched_files));
+            mismatched_files.insert(file_path.clone(), expected_exts_str);
+            return Ok(mismatched_files);
         }
 
-        Ok((1, HashMap::new()))
+        Ok(HashMap::new())
     }
 }
 
@@ -135,7 +133,7 @@ thread_local! {
 }
 
 impl Scanner for LibMagicScanner {
-    fn scan(&self) -> Result<SummaryInfo> {
+    fn scan(&self) -> Result<ScanSummary> {
         let paths = WalkBuilder::new(&self.config.file_path)
             .hidden(false)
             .ignore(false)
@@ -149,7 +147,7 @@ impl Scanner for LibMagicScanner {
             .map(|e| e.into_path())
             .collect::<Vec<_>>();
 
-        let (total_num, mismatched_files) = paths
+        let mismatched_files = paths
             .par_iter()
             .map(|path| {
                 DETECTOR.with(|detector_rc| {
@@ -163,19 +161,16 @@ impl Scanner for LibMagicScanner {
                 })
             })
             .try_reduce(
-                || (0, HashMap::new()),
-                |acc, res| -> Result<(usize, HashMap<String, String>)> {
-                    let (mut acc_total, mut acc_mismatched) = acc;
-                    let (t, m) = res;
-                    acc_total += t;
-                    acc_mismatched.extend(m);
-                    Ok((acc_total, acc_mismatched))
+                HashMap::new,
+                |mut acc_mismatched, res_mismatched| -> Result<HashMap<PathBuf, String>> {
+                    acc_mismatched.extend(res_mismatched);
+                    Ok(acc_mismatched)
                 },
             )?;
 
-        Ok(SummaryInfo {
+        Ok(ScanSummary {
             mismatched_files,
-            total_num,
+            total_num: paths.len(),
         })
     }
 }
