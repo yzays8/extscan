@@ -10,7 +10,7 @@ use extscan::Config;
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let config = Config {
-        file_path: args.file_path,
+        file_path: args.path,
         magic_file: args.magic_file,
         recursive: args.recursive,
         no_summary: args.no_summary,
