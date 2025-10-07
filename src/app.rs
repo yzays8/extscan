@@ -1,13 +1,14 @@
-use crate::{error::Result, scanner};
+use crate::{
+    error::Result,
+    scanner::{self, Scanner},
+};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Config {
-    pub files: Vec<String>,
+    pub file_path: String,
     pub magic_file: Option<String>,
     pub recursive: bool,
     pub no_summary: bool,
-    pub yes: bool,
-    pub no: bool,
 }
 
 #[derive(Debug)]
@@ -21,33 +22,12 @@ impl App {
     }
 
     pub fn run(&self) -> Result<()> {
-        let scan_summary = scanner::scan(&self.config)?;
+        let summary = scanner::build_scanner(&self.config)?.scan()?;
 
         if !self.config.no_summary {
-            scanner::print_summary(&scan_summary);
+            summary.print_summary();
         }
 
-        loop {
-            if self.config.yes {
-                scanner::fix_extensions(&scan_summary.mismatched_files)?;
-                break;
-            }
-            if self.config.no {
-                break;
-            }
-
-            let mut input = String::new();
-            println!("Would you like to fix these mismatched file extensions? [y/n]");
-            std::io::stdin().read_line(&mut input)?;
-            match input.trim().to_lowercase().as_str() {
-                "y" | "yes" => {
-                    scanner::fix_extensions(&scan_summary.mismatched_files)?;
-                    break;
-                }
-                "n" | "no" => break,
-                _ => continue,
-            }
-        }
         Ok(())
     }
 }

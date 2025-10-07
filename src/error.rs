@@ -9,6 +9,8 @@ pub enum Error {
     #[error(transparent)]
     Nul(#[from] std::ffi::NulError),
     #[error("{0}")]
+    Magic(String),
+    #[error("{0}")]
     Other(String),
 }
 

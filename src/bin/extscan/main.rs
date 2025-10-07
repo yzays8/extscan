@@ -10,12 +10,10 @@ use extscan::Config;
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let config = Config {
-        files: args.files,
+        file_path: args.file,
         magic_file: args.magic_file,
         recursive: args.recursive,
         no_summary: args.no_summary,
-        yes: args.yes,
-        no: args.no,
     };
     extscan::App::new(config).run()?;
     Ok(())
