@@ -40,27 +40,27 @@ mod tests {
 
     #[test]
     fn scan() {
-        let args = Config {
+        let config = Config {
             file_path: "tests/data/".to_string(),
             magic_file: None,
             recursive: false,
             no_summary: false,
         };
-        let summ_info = build_scanner(&args).unwrap().scan().unwrap();
-        assert_eq!(summ_info.total_num, 4);
-        assert_eq!(summ_info.mismatched_files.len(), 3);
+        let summary = build_scanner(&config).unwrap().scan().unwrap();
+        assert_eq!(summary.total_num, 4);
+        assert_eq!(summary.mismatched_files.len(), 3);
     }
 
     #[test]
     fn scan_recursively() {
-        let args = Config {
+        let config = Config {
             file_path: "tests/data/".to_string(),
             magic_file: None,
             recursive: true,
             no_summary: false,
         };
-        let summ_info = build_scanner(&args).unwrap().scan().unwrap();
-        assert_eq!(summ_info.total_num, 9);
-        assert_eq!(summ_info.mismatched_files.len(), 6);
+        let summary = build_scanner(&config).unwrap().scan().unwrap();
+        assert_eq!(summary.total_num, 9);
+        assert_eq!(summary.mismatched_files.len(), 6);
     }
 }

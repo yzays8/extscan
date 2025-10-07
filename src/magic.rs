@@ -174,3 +174,23 @@ impl Scanner for LibMagicScanner {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detect_jpg() {
+        let detector = LibMagicDetector::build(None).unwrap();
+        let expected = "jpg";
+        let actual = detector.detect(Path::new("tests/data/jpg.pdf")).unwrap();
+        assert!(actual.contains(expected));
+    }
+
+    #[test]
+    #[should_panic]
+    fn detect_dir() {
+        let detector = LibMagicDetector::build(None).unwrap();
+        detector.detect(Path::new("tests/data/")).unwrap();
+    }
+}
