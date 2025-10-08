@@ -42,7 +42,7 @@ impl LibMagicDetector {
 }
 
 impl FileTypeDetector for LibMagicDetector {
-    fn detect(&self, file_path: &Path) -> Result<String> {
+    fn detect(&mut self, file_path: &Path) -> Result<Vec<String>> {
         let r = match &self.magic_file {
             Some(magic_file) => {
                 let mgc = CString::new(magic_file.as_str())?;
@@ -65,9 +65,12 @@ impl FileTypeDetector for LibMagicDetector {
             })));
         }
 
-        let result_str = unsafe { CStr::from_ptr(r).to_str()? }.to_string();
+        let result = unsafe { CStr::from_ptr(r).to_str()? }
+            .split('/')
+            .map(|s| s.to_string())
+            .collect();
 
-        Ok(result_str)
+        Ok(result)
     }
 }
 
@@ -91,15 +94,15 @@ impl LibMagicScanner {
 
     fn inspect_file(
         &self,
-        detector: &LibMagicDetector,
+        detector: &mut LibMagicDetector,
         file_path: &PathBuf,
-    ) -> Result<HashMap<PathBuf, String>> {
+    ) -> Result<HashMap<PathBuf, Vec<String>>> {
         // Detect empty files.
         if fs::metadata(file_path).map(|m| m.len()).unwrap_or(0) == 0 {
             return Ok(HashMap::new());
         }
 
-        let expected_exts_str = detector.detect(file_path)?;
+        let expected_exts = detector.detect(file_path)?;
         let actual_ext = file_path
             .extension()
             .and_then(|e| e.to_str())
@@ -110,17 +113,17 @@ impl LibMagicScanner {
             return Ok(HashMap::new());
         }
 
-        let is_mismatch = !expected_exts_str.split('/').any(|e| e == actual_ext);
+        let is_mismatch = !expected_exts.iter().any(|e| e == &actual_ext);
         if is_mismatch {
             println!(
                 "{}  {} (expected: {} actual: {})",
                 "[mismatch]".red(),
                 &file_path.display(),
-                &expected_exts_str.green(),
+                &expected_exts.join(", ").green(),
                 &actual_ext.red(),
             );
             let mut mismatched_files = HashMap::new();
-            mismatched_files.insert(file_path.clone(), expected_exts_str);
+            mismatched_files.insert(file_path.clone(), expected_exts);
             return Ok(mismatched_files);
         }
 
@@ -157,12 +160,12 @@ impl Scanner for LibMagicScanner {
                         *detector_opt =
                             Some(LibMagicDetector::build(self.config.magic_file.clone()).unwrap());
                     }
-                    self.inspect_file(detector_opt.as_ref().unwrap(), path)
+                    self.inspect_file(detector_opt.as_mut().unwrap(), path)
                 })
             })
             .try_reduce(
                 HashMap::new,
-                |mut acc_mismatched, res_mismatched| -> Result<HashMap<PathBuf, String>> {
+                |mut acc_mismatched, res_mismatched| -> Result<HashMap<PathBuf, Vec<String>>> {
                     acc_mismatched.extend(res_mismatched);
                     Ok(acc_mismatched)
                 },
@@ -181,16 +184,16 @@ mod tests {
 
     #[test]
     fn detect_jpg() {
-        let detector = LibMagicDetector::build(None).unwrap();
+        let mut detector = LibMagicDetector::build(None).unwrap();
         let expected = "jpg";
         let actual = detector.detect(Path::new("tests/data/jpg.pdf")).unwrap();
-        assert!(actual.contains(expected));
+        assert!(actual.iter().any(|e| e == expected));
     }
 
     #[test]
     #[should_panic]
     fn detect_dir() {
-        let detector = LibMagicDetector::build(None).unwrap();
+        let mut detector = LibMagicDetector::build(None).unwrap();
         detector.detect(Path::new("tests/data/")).unwrap();
     }
 }
