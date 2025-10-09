@@ -22,7 +22,7 @@ sudo apt install libmagic-dev
 pip install magika
 ```
 
-If you plan to use Magika as the detection engine, you will also need to install [ONNX Runtime](https://github.com/microsoft/onnxruntime/).
+Magika requires [ONNX Runtime](https://github.com/microsoft/onnxruntime/) as a runtime dependency.
 
 1. Download the appropriate ONNX Runtime release for your system from the [official repository](https://github.com/microsoft/onnxruntime/releases).
 
