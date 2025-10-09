@@ -83,35 +83,46 @@ impl Scanner for MagikaScanner {
 
         let mismatched_files = paths
             .par_iter()
-            .map(|path| -> Result<HashMap<PathBuf, Vec<String>>> {
+            .map(|path| -> Result<Option<(PathBuf, Vec<String>)>> {
                 DETECTOR.with(|detector_rc| {
                     let mut detector_opt = detector_rc.borrow_mut();
                     if detector_opt.is_none() {
-                        *detector_opt = Some(MagikaDetector::build().unwrap());
+                        *detector_opt = Some(MagikaDetector::build()?);
                     }
                     let detector = detector_opt.as_mut().unwrap();
                     let expected_exts = detector.detect(path)?;
                     let actual_ext = path
                         .extension()
                         .and_then(|e| e.to_str())
-                        .ok_or(Error::Other("Failed to get file extension".to_string()))?
-                        .to_lowercase();
-                    let is_mismatch = !expected_exts.iter().any(|e| e == &actual_ext);
+                        .ok_or(Error::Other("Failed to get file extension".to_string()))?;
+                    let is_mismatch = !expected_exts
+                        .iter()
+                        .any(|e| e.eq_ignore_ascii_case(actual_ext));
                     if is_mismatch {
-                        let mut mismatched_files = HashMap::new();
-                        mismatched_files.insert(path.clone(), expected_exts);
-                        return Ok(mismatched_files);
+                        Ok(Some((path.clone(), expected_exts)))
+                    } else {
+                        Ok(None)
                     }
-                    Ok(HashMap::new())
                 })
             })
-            .try_reduce(
-                HashMap::new,
-                |mut acc_mismatched, res_mismatched| -> Result<HashMap<PathBuf, Vec<String>>> {
-                    acc_mismatched.extend(res_mismatched);
-                    Ok(acc_mismatched)
+            .try_fold(
+                Vec::new,
+                |mut acc, r| -> Result<Vec<(PathBuf, Vec<String>)>> {
+                    if let Some(pair) = r? {
+                        acc.push(pair);
+                    }
+                    Ok(acc)
                 },
-            )?;
+            )
+            .try_reduce(
+                Vec::new,
+                |mut acc, mut v| -> Result<Vec<(PathBuf, Vec<String>)>> {
+                    acc.append(&mut v);
+                    Ok(acc)
+                },
+            )?
+            .into_iter()
+            .collect::<HashMap<_, _>>();
 
         Ok(ScanSummary {
             mismatched_files,
