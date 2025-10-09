@@ -14,12 +14,9 @@ pub struct Args {
 
     #[arg(short, long, help = "Check files and directories recursively")]
     pub recursive: bool,
-
-    #[arg(long, help = "Suppress summary output after checking")]
-    pub no_summary: bool,
 }
 
-#[derive(Debug, Clone, ValueEnum)]
+#[derive(Debug, Clone, PartialEq, Eq, ValueEnum)]
 pub enum EngineType {
     Libmagic,
     Magika,

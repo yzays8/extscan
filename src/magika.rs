@@ -4,7 +4,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use colored::Colorize;
 use ignore::WalkBuilder;
 use magika::Session;
 use rayon::prelude::*;
@@ -99,13 +98,6 @@ impl Scanner for MagikaScanner {
                         .to_lowercase();
                     let is_mismatch = !expected_exts.iter().any(|e| e == &actual_ext);
                     if is_mismatch {
-                        println!(
-                            "{}  {} (expected: {} actual: {})",
-                            "[mismatch]".red(),
-                            &path.display(),
-                            &expected_exts.join(", ").green(),
-                            &actual_ext.red(),
-                        );
                         let mut mismatched_files = HashMap::new();
                         mismatched_files.insert(path.clone(), expected_exts);
                         return Ok(mismatched_files);

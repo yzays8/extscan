@@ -1,3 +1,7 @@
+use std::time::Duration;
+
+use indicatif::{ProgressBar, ProgressStyle};
+
 use crate::{error::Result, scanner};
 
 #[derive(Debug, Clone)]
@@ -6,7 +10,6 @@ pub struct Config {
     pub engine_type: EngineType,
     pub magic_file: Option<String>,
     pub recursive: bool,
-    pub no_summary: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -26,11 +29,14 @@ impl App {
     }
 
     pub fn run(&self) -> Result<()> {
-        let summary = scanner::build_scanner(&self.config).scan()?;
+        let pb = ProgressBar::new_spinner();
+        pb.set_style(ProgressStyle::default_spinner());
+        pb.enable_steady_tick(Duration::from_millis(100));
 
-        if !self.config.no_summary {
-            summary.print();
-        }
+        let summary = scanner::build_scanner(&self.config).scan()?;
+        pb.finish_and_clear();
+
+        summary.print();
 
         Ok(())
     }

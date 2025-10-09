@@ -4,11 +4,9 @@ use std::{
     cell::RefCell,
     collections::HashMap,
     ffi::{CStr, CString, c_void},
-    fs,
     path::{Path, PathBuf},
 };
 
-use colored::Colorize;
 use ignore::WalkBuilder;
 use rayon::prelude::*;
 
@@ -37,7 +35,7 @@ impl LibMagicDetector {
                 CStr::from_ptr(ffi::magic_error(cookie))
             })));
         }
-        Ok(LibMagicDetector { magic_file, cookie })
+        Ok(Self { magic_file, cookie })
     }
 }
 
@@ -91,44 +89,6 @@ impl LibMagicScanner {
     pub fn new(config: Config) -> Self {
         LibMagicScanner { config }
     }
-
-    fn inspect_file(
-        &self,
-        detector: &mut LibMagicDetector,
-        file_path: &PathBuf,
-    ) -> Result<HashMap<PathBuf, Vec<String>>> {
-        // Detect empty files.
-        if fs::metadata(file_path).map(|m| m.len()).unwrap_or(0) == 0 {
-            return Ok(HashMap::new());
-        }
-
-        let expected_exts = detector.detect(file_path)?;
-        let actual_ext = file_path
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("")
-            .to_lowercase();
-
-        if actual_ext.is_empty() {
-            return Ok(HashMap::new());
-        }
-
-        let is_mismatch = !expected_exts.iter().any(|e| e == &actual_ext);
-        if is_mismatch {
-            println!(
-                "{}  {} (expected: {} actual: {})",
-                "[mismatch]".red(),
-                &file_path.display(),
-                &expected_exts.join(", ").green(),
-                &actual_ext.red(),
-            );
-            let mut mismatched_files = HashMap::new();
-            mismatched_files.insert(file_path.clone(), expected_exts);
-            return Ok(mismatched_files);
-        }
-
-        Ok(HashMap::new())
-    }
 }
 
 thread_local! {
@@ -147,6 +107,15 @@ impl Scanner for LibMagicScanner {
             .build()
             .filter_map(|e| e.ok())
             .filter(|e| e.file_type().is_some_and(|t| t.is_file()))
+            // Skip empty files.
+            .filter(|e| e.metadata().map(|m| m.len()).unwrap_or(0) > 0)
+            // Skip files without extensions.
+            .filter(|e| {
+                e.path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .is_some_and(|ext| !ext.is_empty())
+            })
             .map(|e| e.into_path())
             .collect::<Vec<_>>();
 
@@ -160,7 +129,21 @@ impl Scanner for LibMagicScanner {
                         *detector_opt =
                             Some(LibMagicDetector::build(self.config.magic_file.clone()).unwrap());
                     }
-                    self.inspect_file(detector_opt.as_mut().unwrap(), path)
+                    let detector = detector_opt.as_mut().unwrap();
+                    let expected_exts = detector.detect(path)?;
+                    let actual_ext = path
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .ok_or(Error::Other("Failed to get file extension".to_string()))?
+                        .to_lowercase();
+
+                    let is_mismatch = !expected_exts.iter().any(|e| e == &actual_ext);
+                    if is_mismatch {
+                        let mut mismatched_files = HashMap::new();
+                        mismatched_files.insert(path.clone(), expected_exts);
+                        return Ok(mismatched_files);
+                    }
+                    Ok(HashMap::new())
                 })
             })
             .try_reduce(
