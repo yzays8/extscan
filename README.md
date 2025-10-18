@@ -6,7 +6,7 @@ extscan detects and reports mismatches between file extensions and file contents
 
 When using libmagic as the file detection engine, false positives may occur, particularly with text files, due to its dependence on libmagic’s database. Magika provides similar functionality but offers better accuracy at the expense of increased scan time.
 
-## Install
+## Installation
 
 ### Linux (Debian)
 
