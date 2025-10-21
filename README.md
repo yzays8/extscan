@@ -53,6 +53,7 @@ Options:
   -e, --engine <ENGINE>          File type detection engine to use [default: libmagic] [possible values: libmagic, magika]
       --magic-file <MAGIC_FILE>  Use the specified magic file for file type detection
   -r, --recursive                Check files and directories recursively
+      --ignore                   Ignore files and directories matching patterns in .ignore and .gitignore files
   -h, --help                     Print help
   -V, --version                  Print version
 ```
