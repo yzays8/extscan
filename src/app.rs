@@ -10,6 +10,7 @@ pub struct Config {
     pub engine_type: EngineType,
     pub magic_file: Option<String>,
     pub recursive: bool,
+    pub ignore: bool,
 }
 
 #[derive(Debug, Clone)]

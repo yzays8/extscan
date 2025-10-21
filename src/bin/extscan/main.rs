@@ -22,6 +22,7 @@ fn main() -> anyhow::Result<()> {
         engine_type,
         magic_file: args.magic_file,
         recursive: args.recursive,
+        ignore: args.ignore,
     };
 
     extscan::App::new(config).run()?;

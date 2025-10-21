@@ -52,6 +52,7 @@ mod tests {
             engine_type: EngineType::LibMagic,
             magic_file: None,
             recursive: false,
+            ignore: false,
         };
         let summary = build_scanner(&config).scan().unwrap();
         assert_eq!(summary.total_num, 3);
@@ -65,6 +66,7 @@ mod tests {
             engine_type: EngineType::LibMagic,
             magic_file: None,
             recursive: true,
+            ignore: false,
         };
         let summary = build_scanner(&config).scan().unwrap();
         assert_eq!(summary.total_num, 7);

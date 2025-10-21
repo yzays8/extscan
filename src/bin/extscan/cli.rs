@@ -14,6 +14,12 @@ pub struct Args {
 
     #[arg(short, long, help = "Check files and directories recursively")]
     pub recursive: bool,
+
+    #[arg(
+        long,
+        help = "Ignore files and directories matching patterns in .ignore and .gitignore files"
+    )]
+    pub ignore: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, ValueEnum)]

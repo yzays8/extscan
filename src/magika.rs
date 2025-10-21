@@ -61,8 +61,8 @@ impl Scanner for MagikaScanner {
     fn scan(&self) -> Result<ScanSummary> {
         let paths = WalkBuilder::new(&self.config.file_path)
             .hidden(false)
-            .ignore(false)
-            .git_ignore(false)
+            .ignore(self.config.ignore)
+            .git_ignore(self.config.ignore)
             .parents(false)
             .follow_links(false)
             .max_depth(if self.config.recursive { None } else { Some(1) })
